@@ -142,6 +142,7 @@ func (c *Client) MakeRestRequest(method string, path string, body *container.Con
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Content-Type", "application/json")
 	log.Printf("HTTP request %s %s %v", method, path, req)
 
 	if authenticated {
@@ -166,9 +167,11 @@ func (c *Client) Authenticate() error {
 		return err
 	}
 
-	fmt.Println(body.String())
+	log.Printf("bodyyyy %s", body.String())
 	req, err := c.MakeRestRequest(method, path, body, false)
 	obj, _, err := c.Do(req)
+
+	log.Println("OBJECTTTTTTTTTTTTT: %s", obj)
 
 	if err != nil {
 		return err
@@ -176,6 +179,7 @@ func (c *Client) Authenticate() error {
 	if obj == nil {
 		return errors.New("Empty response")
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	token := obj.S("token").String()
 
@@ -209,15 +213,19 @@ func (c *Client) Do(req *http.Request) (*container.Container, *http.Response, er
 	bodyStr := string(bodyBytes)
 	resp.Body.Close()
 	log.Printf("\n HTTP response unique string %s %s %s", req.Method, req.URL.String(), bodyStr)
-	obj, err := container.ParseJSON(bodyBytes)
+	if req.Method != "DELETE" {
+		obj, err := container.ParseJSON(bodyBytes)
 
-	if err != nil {
-		fmt.Println("Error occurred.")
-		log.Printf("Error occured while json parsing %+v", err)
+		if err != nil {
+			fmt.Println("Error occurred.")
+			log.Printf("Error occured while json parsing %+v", err)
+			return nil, resp, err
+		}
+		log.Printf("[DEBUG] Exit from do method")
+		return obj, resp, err
+	} else {
 		return nil, resp, err
 	}
-	log.Printf("[DEBUG] Exit from do method")
-	return obj, resp, err
 
 }
 
