@@ -3,21 +3,20 @@ package client
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/ciscoecosystem/mso-go-client/container"
 	"github.com/ciscoecosystem/mso-go-client/models"
 )
 
-func (c *Client) GetViaURL(url string) (*container.Container, error) {
-	req, err := c.MakeRestRequest("GET", url, nil, true)
+func (c *Client) GetViaURL(endpoint string) (*container.Container, error) {
+
+	req, err := c.MakeRestRequest("GET", endpoint, nil, true)
 
 	if err != nil {
 		return nil, err
 	}
 
 	obj, _, err := c.Do(req)
-	log.Printf("Getvia url %+v", obj)
 	if err != nil {
 		return nil, err
 	}
@@ -29,14 +28,33 @@ func (c *Client) GetViaURL(url string) (*container.Container, error) {
 
 }
 
-func (c *Client) Save(url string, obj models.Model) (*container.Container, error) {
+func (c *Client) Put(endpoint string, obj models.Model) (*container.Container, error) {
+	jsonPayload, err := c.PrepareModel(obj)
+
+	if err != nil {
+		return nil, err
+	}
+	req, err := c.MakeRestRequest("PUT", endpoint, jsonPayload, true)
+	if err != nil {
+		return nil, err
+	}
+
+	cont, _, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return cont, CheckForErrors(cont, "PUT")
+}
+
+func (c *Client) Save(endpoint string, obj models.Model) (*container.Container, error) {
 
 	jsonPayload, err := c.PrepareModel(obj)
 
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.MakeRestRequest("POST", url, jsonPayload, true)
+	req, err := c.MakeRestRequest("POST", endpoint, jsonPayload, true)
 	if err != nil {
 		return nil, err
 	}
@@ -69,21 +87,27 @@ func (c *Client) DeletebyId(url string) error {
 		return err
 	}
 
-	_, _, err1 := c.Do(req)
+	_, resp, err1 := c.Do(req)
 	if err1 != nil {
 		return err1
 	}
+	if resp.StatusCode == 204 {
+		return nil
+	} else {
+		return fmt.Errorf("Unable to delete the object")
+	}
+
 	return nil
 }
 
-func (c *Client) PatchbyID(url string, obj models.Model) (*container.Container, error) {
+func (c *Client) PatchbyID(endpoint string, obj models.Model) (*container.Container, error) {
 
 	jsonPayload, err := c.PrepareModel(obj)
 
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.MakeRestRequest("PATCH", url, jsonPayload, true)
+	req, err := c.MakeRestRequest("PATCH", endpoint, jsonPayload, true)
 	if err != nil {
 		return nil, err
 	}
