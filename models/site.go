@@ -28,7 +28,7 @@ func (siteAttributes *SiteAttributes) ToMap() (map[string]interface{}, error) {
 	A(siteAttributeMap, "name", siteAttributes.Name)
 	A(siteAttributeMap, "username", siteAttributes.ApicUsername)
 	A(siteAttributeMap, "password", siteAttributes.ApicPassword)
-	A(siteAttributeMap, "apic_site_id", siteAttributes.ApicSiteId)
+	A(siteAttributeMap, "apicSiteId", siteAttributes.ApicSiteId)
 	A(siteAttributeMap, "labels", siteAttributes.Labels)
 	A(siteAttributeMap, "location", siteAttributes.Location)
 	A(siteAttributeMap, "urls", siteAttributes.Url)
