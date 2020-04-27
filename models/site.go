@@ -1,8 +1,8 @@
 package models
 
 type Location struct {
-	Latitude  float64 `json:",omitempty"`
-	Longitude float64 `json:",omitempty"`
+	Lat  float64 `json:"lat,omitempty"`
+	Long float64 `json:"long,omitempty"`
 }
 
 type SiteAttributes struct {
@@ -10,7 +10,6 @@ type SiteAttributes struct {
 	ApicUsername string        `json:",omitempty"`
 	ApicPassword string        `json:",omitempty"`
 	ApicSiteId   string        `json:",omitempty"`
-	Site         string        `json:",omitempty"`
 	Labels       []interface{} `json:",omitempty"`
 	Location     *Location     `json:",omitempty"`
 	Url          []interface{} `json:",omitempty"`
@@ -28,7 +27,6 @@ func (siteAttributes *SiteAttributes) ToMap() (map[string]interface{}, error) {
 	A(siteAttributeMap, "username", siteAttributes.ApicUsername)
 	A(siteAttributeMap, "password", siteAttributes.ApicPassword)
 	A(siteAttributeMap, "apic_site_id", siteAttributes.ApicSiteId)
-	A(siteAttributeMap, "site", siteAttributes.Site)
 	A(siteAttributeMap, "labels", siteAttributes.Labels)
 	A(siteAttributeMap, "location", siteAttributes.Location)
 	A(siteAttributeMap, "urls", siteAttributes.Url)
