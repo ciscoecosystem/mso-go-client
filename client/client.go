@@ -151,7 +151,7 @@ func (c *Client) MakeRestRequest(method string, path string, body *container.Con
 			return req, err
 		}
 	}
-	log.Printf("HTTP request after injection %s %s %v", method, path, req)
+	log.Printf("HTTP request after injection %s %s", method, path)
 
 	return req, nil
 }
