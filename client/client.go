@@ -65,6 +65,7 @@ func Domain(domain string) Option {
 func Platform(platform string) Option {
 	return func(client *Client) {
 		client.platform = platform
+		// platform for ND default is MSO
 	}
 }
 func initClient(clientUrl, username string, options ...Option) *Client {
