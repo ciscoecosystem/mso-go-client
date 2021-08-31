@@ -113,6 +113,8 @@ func (c *Client) PatchbyID(endpoint string, objList ...models.Model) (*container
 
 	}
 
+	endpoint = "?validate=false"
+
 	req, err := c.MakeRestRequest("PATCH", endpoint, contJs, true)
 	if err != nil {
 		return nil, err
