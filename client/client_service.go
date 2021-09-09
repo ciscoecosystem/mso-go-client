@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/ciscoecosystem/mso-go-client/container"
 	"github.com/ciscoecosystem/mso-go-client/models"
@@ -112,6 +113,11 @@ func (c *Client) PatchbyID(endpoint string, objList ...models.Model) (*container
 		contJs.ArrayAppend(jsonPayload.Data())
 
 	}
+
+	log.Printf("DEBUG LOG")
+	log.Printf("%s", endpoint)
+	endpoint += "?validate=false"
+	log.Printf("%s", endpoint)
 
 	req, err := c.MakeRestRequest("PATCH", endpoint, contJs, true)
 	if err != nil {
