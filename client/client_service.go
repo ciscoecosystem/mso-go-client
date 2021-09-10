@@ -3,7 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
-	"log"
+	"net/url"
 
 	"github.com/ciscoecosystem/mso-go-client/container"
 	"github.com/ciscoecosystem/mso-go-client/models"
@@ -114,12 +114,13 @@ func (c *Client) PatchbyID(endpoint string, objList ...models.Model) (*container
 
 	}
 
-	log.Printf("DEBUG LOG")
-	log.Printf("%s", endpoint)
-	endpoint += "?validate=false"
-	log.Printf("%s", endpoint)
+	// URL encoding
+	baseUrl, _ := url.Parse(endpoint)
+	qs := url.Values{}
+	qs.Add("validate", "false")
+	baseUrl.RawQuery = qs.Encode()
 
-	req, err := c.MakeRestRequest("PATCH", endpoint, contJs, true)
+	req, err := c.MakeRestRequest("PATCH", baseUrl.String(), contJs, true)
 	if err != nil {
 		return nil, err
 	}
