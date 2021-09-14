@@ -28,6 +28,10 @@ func (c *Client) GetViaURL(endpoint string) (*container.Container, error) {
 
 }
 
+func (c *Client) GetPlatform() string {
+	return c.platform
+}
+
 func (c *Client) Put(endpoint string, obj models.Model) (*container.Container, error) {
 	jsonPayload, err := c.PrepareModel(obj)
 
