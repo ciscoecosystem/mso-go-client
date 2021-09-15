@@ -136,6 +136,13 @@ func (c *Client) useInsecureHTTPClient(insecure bool) *http.Transport {
 }
 
 func (c *Client) MakeRestRequest(method string, path string, body *container.Container, authenticated bool) (*http.Request, error) {
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+	split := strings.Split(path, "/")
+	if c.platform == "nd" && split[1] == "v2" {
+		path = fmt.Sprintf("mso/%v", path)
+	}
 	url, err := url.Parse(path)
 	if err != nil {
 		return nil, err
