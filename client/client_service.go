@@ -95,7 +95,7 @@ func (c *Client) DeletebyId(url string) error {
 	if err1 != nil {
 		return err1
 	}
-	if resp.StatusCode == 204 {
+	if resp.StatusCode == 204 || resp.StatusCode == 200 {
 		return nil
 	} else {
 		return fmt.Errorf("Unable to delete the object")
