@@ -175,9 +175,10 @@ func (c *Client) MakeRestRequest(method string, path string, body *container.Con
 // Authenticate is used to
 func (c *Client) Authenticate() error {
 	method := "POST"
-	path := "/login"
+	path := "/api/v1/auth/login"
 	if c.platform == "nd" {
 		c.domain = "local"
+		path = "/login"
 	}
 	body, err := container.ParseJSON([]byte(fmt.Sprintf(authPayload, c.username, c.password)))
 	if c.domain != "" {
