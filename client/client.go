@@ -136,11 +136,10 @@ func (c *Client) useInsecureHTTPClient(insecure bool) *http.Transport {
 }
 
 func (c *Client) MakeRestRequest(method string, path string, body *container.Container, authenticated bool) (*http.Request, error) {
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
-	split := strings.Split(path, "/")
-	if c.platform == "nd" && split[1] == "v2" {
+	if c.platform == "nd" && path != "/login" {
+		if strings.HasPrefix(path, "/") {
+			path = path[1:]
+		}
 		path = fmt.Sprintf("mso/%v", path)
 	}
 	url, err := url.Parse(path)
@@ -176,7 +175,7 @@ func (c *Client) MakeRestRequest(method string, path string, body *container.Con
 // Authenticate is used to
 func (c *Client) Authenticate() error {
 	method := "POST"
-	path := "/api/v1/auth/login"
+	path := "/login"
 	if c.platform == "nd" {
 		c.domain = "local"
 	}
