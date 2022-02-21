@@ -30,18 +30,16 @@ func CreateInterSchemaSiteVrfRegionNetworkModel(hubNetwork *InterSchemaSiteVrfRe
 		Ops:  "replace",
 		Path: fmt.Sprintf("/sites/%s-%s/vrfs/%s/regions/%s", hubNetwork.SiteID, hubNetwork.TemplateName, hubNetwork.VrfName, hubNetwork.Region),
 	}
-	vrfHubNetworkMap := make(map[string]interface{})
-	vrfHubNetworkMap["cloudRsCtxProfileToGatewayRouterP"] = map[string]string{
+	vrfRegionMap, err := InterSchemaSiteVrfRegionFromContainer(cont, hubNetwork)
+	if err != nil {
+		log.Printf("%s", err)
+		return nil
+	}
+	vrfRegionMap["cloudRsCtxProfileToGatewayRouterP"] = map[string]string{
 		"name":       hubNetwork.Name,
 		"tenantName": hubNetwork.TenantName,
 	}
-	vrfHubNetworkMap["name"] = hubNetwork.Region
-	vrfCidrMap, err := InterSchemaSiteVrfRegionFromContainer(cont, hubNetwork)
-	if err != nil {
-		return nil
-	}
-	vrfHubNetworkMap["cidrs"] = vrfCidrMap
-	vrfHubNetwork.Value = vrfHubNetworkMap
+	vrfHubNetwork.Value = vrfRegionMap
 	return &vrfHubNetwork
 }
 
@@ -52,12 +50,12 @@ func DeleteInterSchemaSiteVrfRegionNetworkModel(hubNetwork *InterSchemaSiteVrfRe
 	}
 	vrfHubNetworkMap := make(map[string]interface{})
 	vrfHubNetworkMap["name"] = hubNetwork.Region
-	vrfCidrMap, err := InterSchemaSiteVrfRegionFromContainer(cont, hubNetwork)
+	vrfRegionMap, err := InterSchemaSiteVrfRegionFromContainer(cont, hubNetwork)
 	if err != nil {
 		return nil
 	}
-	vrfHubNetworkMap["cidrs"] = vrfCidrMap
-	vrfHubNetwork.Value = vrfHubNetworkMap
+	vrfRegionMap["cloudRsCtxProfileToGatewayRouterP"] = nil
+	vrfHubNetwork.Value = vrfRegionMap
 	return &vrfHubNetwork
 }
 
@@ -73,6 +71,7 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 		tempCont, err := cont.ArrayElement(i, "sites")
 		log.Printf("tempCont: %v\n", tempCont)
 		if err != nil {
+			log.Printf("error in tempCont: %v", err)
 			return nil, err
 		}
 		siteId := StripQuotes(tempCont.S("siteId").String())
@@ -91,8 +90,11 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 			for j := 0; j < vrfCount; j++ {
 				vrfTempCont := vrfCont.Index(j)
 				log.Printf("vrfTempCont: %v\n", vrfTempCont)
-				vrfRef := strings.Split(StripQuotes(vrfCont.S("vrfRef").String()), "/")
+				log.Printf("%v", StripQuotes(vrfTempCont.S("vrfRef").String()))
+				vrfRef := strings.Split(StripQuotes(vrfTempCont.S("vrfRef").String()), "/")
+				log.Printf("vrfRef: %v", vrfRef)
 				vrfName := vrfRef[len(vrfRef)-1]
+				log.Printf("vrfName: %v", vrfName)
 				if vrfName == regionHubNetwork.VrfName {
 					regionCount, err := vrfTempCont.ArrayCount("regions")
 					log.Printf("regionCount: %v\n", regionCount)
@@ -103,10 +105,12 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 					for k := 0; k < regionCount; k++ {
 						regionTempCont := regionCont.Index(k)
 						log.Printf("regionTempCont: %v\n", regionTempCont)
-						regionName := regionTempCont.S("name").String()
+						regionName := G(regionTempCont, "name")
 						if regionName == regionHubNetwork.Region {
+							log.Printf("in if block of regionName: %v", regionTempCont)
 							err := json.Unmarshal(regionTempCont.EncodeJSON(), &regionMap)
 							if err != nil {
+								log.Printf("error is: %v", err)
 								return nil, err
 							}
 							found = true
@@ -117,6 +121,7 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 			}
 		}
 	}
+	log.Printf("region Map holds value: %v", regionMap)
 	if !found {
 		return nil, fmt.Errorf("unable to find siteVrfRegionHubNetwork %s", regionHubNetwork.Name)
 	}
@@ -153,7 +158,7 @@ func InterSchemaSiteVrfRegionHubNetworkFromContainer(cont *container.Container, 
 			for j := 0; j < vrfCount; j++ {
 				vrfTempCont := vrfCont.Index(j)
 				log.Printf("vrfTempCont: %v\n", vrfTempCont)
-				vrfRef := strings.Split(StripQuotes(vrfCont.S("vrfRef").String()), "/")
+				vrfRef := strings.Split(StripQuotes(vrfTempCont.S("vrfRef").String()), "/")
 				vrfName := vrfRef[len(vrfRef)-1]
 				if vrfName == regionHubNetwork.VrfName {
 					regionCount, err := vrfTempCont.ArrayCount("regions")
@@ -165,17 +170,18 @@ func InterSchemaSiteVrfRegionHubNetworkFromContainer(cont *container.Container, 
 					for k := 0; k < regionCount; k++ {
 						regionTempCont := regionCont.Index(k)
 						log.Printf("regionTempCont: %v\n", regionTempCont)
-						regionName := regionTempCont.S("name").String()
+						regionName := G(regionTempCont, "name")
 						if regionName == regionHubNetwork.Region {
 							routePCont := regionTempCont.S("cloudRsCtxProfileToGatewayRouterP")
 							log.Printf("routePCont: %v\n", routePCont)
-							hubName := routePCont.S("name").String()
-							tenantName := routePCont.S("tenantName").String()
+							hubName := StripQuotes(routePCont.S("name").String())
+							tenantName := StripQuotes(routePCont.S("tenantName").String())
 							log.Printf("hubName: %v\n", hubName)
 							log.Printf("tenantName: %v\n", tenantName)
 							log.Printf("regionHubNetwork.Name: %v\n", regionHubNetwork.Name)
 							log.Printf("regionHubNetwork.TenantName: %v\n", regionHubNetwork.TenantName)
 							if hubName == regionHubNetwork.Name && tenantName == regionHubNetwork.TenantName {
+								log.Printf("in if container")
 								hubNetwork.Name = hubName
 								hubNetwork.TenantName = tenantName
 								hubNetwork.Region = regionName
