@@ -1,8 +1,6 @@
 package client
 
 import (
-	"fmt"
-
 	"github.com/ciscoecosystem/mso-go-client/container"
 	"github.com/ciscoecosystem/mso-go-client/models"
 )
