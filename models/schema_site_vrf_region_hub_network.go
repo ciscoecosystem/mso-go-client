@@ -32,7 +32,6 @@ func CreateInterSchemaSiteVrfRegionNetworkModel(hubNetwork *InterSchemaSiteVrfRe
 	}
 	vrfRegionMap, err := InterSchemaSiteVrfRegionFromContainer(cont, hubNetwork)
 	if err != nil {
-		log.Printf("%s", err)
 		return nil
 	}
 	vrfRegionMap["cloudRsCtxProfileToGatewayRouterP"] = map[string]string{
@@ -71,7 +70,6 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 		tempCont, err := cont.ArrayElement(i, "sites")
 		log.Printf("tempCont: %v\n", tempCont)
 		if err != nil {
-			log.Printf("error in tempCont: %v", err)
 			return nil, err
 		}
 		siteId := StripQuotes(tempCont.S("siteId").String())
@@ -90,7 +88,6 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 			for j := 0; j < vrfCount; j++ {
 				vrfTempCont := vrfCont.Index(j)
 				log.Printf("vrfTempCont: %v\n", vrfTempCont)
-				log.Printf("%v", StripQuotes(vrfTempCont.S("vrfRef").String()))
 				vrfRef := strings.Split(StripQuotes(vrfTempCont.S("vrfRef").String()), "/")
 				log.Printf("vrfRef: %v", vrfRef)
 				vrfName := vrfRef[len(vrfRef)-1]
@@ -107,7 +104,6 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 						log.Printf("regionTempCont: %v\n", regionTempCont)
 						regionName := G(regionTempCont, "name")
 						if regionName == regionHubNetwork.Region {
-							log.Printf("in if block of regionName: %v", regionTempCont)
 							err := json.Unmarshal(regionTempCont.EncodeJSON(), &regionMap)
 							if err != nil {
 								log.Printf("error is: %v", err)
@@ -121,7 +117,6 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 			}
 		}
 	}
-	log.Printf("region Map holds value: %v", regionMap)
 	if !found {
 		return nil, fmt.Errorf("unable to find siteVrfRegionHubNetwork %s", regionHubNetwork.Name)
 	}
@@ -181,7 +176,6 @@ func InterSchemaSiteVrfRegionHubNetworkFromContainer(cont *container.Container, 
 							log.Printf("regionHubNetwork.Name: %v\n", regionHubNetwork.Name)
 							log.Printf("regionHubNetwork.TenantName: %v\n", regionHubNetwork.TenantName)
 							if hubName == regionHubNetwork.Name && tenantName == regionHubNetwork.TenantName {
-								log.Printf("in if container")
 								hubNetwork.Name = hubName
 								hubNetwork.TenantName = tenantName
 								hubNetwork.Region = regionName
