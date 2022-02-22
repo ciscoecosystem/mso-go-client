@@ -62,7 +62,6 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 	regionMap := make(map[string]interface{})
 	var found bool = false
 	count, err := cont.ArrayCount("sites")
-	log.Printf("Count: %v\n", count)
 	if err != nil {
 		return nil, fmt.Errorf("no sites found")
 	}
@@ -73,14 +72,9 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 			return nil, err
 		}
 		siteId := StripQuotes(tempCont.S("siteId").String())
-		log.Printf("siteId: %v\n", siteId)
 		templateName := StripQuotes((tempCont.S("templateName")).String())
-		log.Printf("templateName: %v\n", templateName)
-		log.Printf("regionHubNetwork.SiteID: %v\n", regionHubNetwork.SiteID)
-		log.Printf("regionHubNetwork.TemplateName: %v\n", regionHubNetwork.TemplateName)
 		if (siteId == regionHubNetwork.SiteID) && (templateName == regionHubNetwork.TemplateName) {
 			vrfCount, err := tempCont.ArrayCount("vrfs")
-			log.Printf("vrfCount: %v\n", vrfCount)
 			if err != nil {
 				return nil, fmt.Errorf("unable to get VRFs List")
 			}
@@ -89,12 +83,9 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 				vrfTempCont := vrfCont.Index(j)
 				log.Printf("vrfTempCont: %v\n", vrfTempCont)
 				vrfRef := strings.Split(StripQuotes(vrfTempCont.S("vrfRef").String()), "/")
-				log.Printf("vrfRef: %v", vrfRef)
 				vrfName := vrfRef[len(vrfRef)-1]
-				log.Printf("vrfName: %v", vrfName)
 				if vrfName == regionHubNetwork.VrfName {
 					regionCount, err := vrfTempCont.ArrayCount("regions")
-					log.Printf("regionCount: %v\n", regionCount)
 					if err != nil {
 						return nil, fmt.Errorf("unable to Regions List")
 					}
@@ -106,7 +97,6 @@ func InterSchemaSiteVrfRegionFromContainer(cont *container.Container, regionHubN
 						if regionName == regionHubNetwork.Region {
 							err := json.Unmarshal(regionTempCont.EncodeJSON(), &regionMap)
 							if err != nil {
-								log.Printf("error is: %v", err)
 								return nil, err
 							}
 							found = true
@@ -127,7 +117,6 @@ func InterSchemaSiteVrfRegionHubNetworkFromContainer(cont *container.Container, 
 	hubNetwork := InterSchemaSiteVrfRegionHubNetork{}
 	var found bool = false
 	count, err := cont.ArrayCount("sites")
-	log.Printf("Count: %v\n", count)
 	if err != nil {
 		return nil, fmt.Errorf("no sites found")
 	}
@@ -138,14 +127,9 @@ func InterSchemaSiteVrfRegionHubNetworkFromContainer(cont *container.Container, 
 			return nil, err
 		}
 		siteId := StripQuotes(tempCont.S("siteId").String())
-		log.Printf("siteId: %v\n", siteId)
 		templateName := StripQuotes((tempCont.S("templateName")).String())
-		log.Printf("templateName: %v\n", templateName)
-		log.Printf("regionHubNetwork.SiteID: %v\n", regionHubNetwork.SiteID)
-		log.Printf("regionHubNetwork.TemplateName: %v\n", regionHubNetwork.TemplateName)
 		if (siteId == regionHubNetwork.SiteID) && (templateName == regionHubNetwork.TemplateName) {
 			vrfCount, err := tempCont.ArrayCount("vrfs")
-			log.Printf("vrfCount: %v\n", vrfCount)
 			if err != nil {
 				return nil, fmt.Errorf("unable to get VRFs List")
 			}
@@ -157,7 +141,6 @@ func InterSchemaSiteVrfRegionHubNetworkFromContainer(cont *container.Container, 
 				vrfName := vrfRef[len(vrfRef)-1]
 				if vrfName == regionHubNetwork.VrfName {
 					regionCount, err := vrfTempCont.ArrayCount("regions")
-					log.Printf("regionCount: %v\n", regionCount)
 					if err != nil {
 						return nil, fmt.Errorf("unable to Regions List")
 					}
@@ -171,10 +154,6 @@ func InterSchemaSiteVrfRegionHubNetworkFromContainer(cont *container.Container, 
 							log.Printf("routePCont: %v\n", routePCont)
 							hubName := StripQuotes(routePCont.S("name").String())
 							tenantName := StripQuotes(routePCont.S("tenantName").String())
-							log.Printf("hubName: %v\n", hubName)
-							log.Printf("tenantName: %v\n", tenantName)
-							log.Printf("regionHubNetwork.Name: %v\n", regionHubNetwork.Name)
-							log.Printf("regionHubNetwork.TenantName: %v\n", regionHubNetwork.TenantName)
 							if hubName == regionHubNetwork.Name && tenantName == regionHubNetwork.TenantName {
 								hubNetwork.Name = hubName
 								hubNetwork.TenantName = tenantName
