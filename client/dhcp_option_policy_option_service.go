@@ -2,12 +2,13 @@ package client
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ciscoecosystem/mso-go-client/models"
 )
 
 func (client *Client) CreateDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyOption) error {
-	optionPolicyID, err := client.GetDHCPOptionPolicyID(obj.Name)
+	optionPolicyID, err := client.GetDHCPOptionPolicyID(obj.PolicyName)
 	if err != nil {
 		return err
 	}
@@ -19,13 +20,11 @@ func (client *Client) CreateDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyO
 	if err != nil {
 		return err
 	}
-
 	option := models.DHCPOption{
 		Data: obj.Data,
 		ID:   obj.ID,
 		Name: obj.Name,
 	}
-
 	DHCPOptionPolicy.DHCPOption = append(DHCPOptionPolicy.DHCPOption, option)
 	_, err = client.UpdateDHCPOptionPolicy(optionPolicyID, DHCPOptionPolicy)
 	if err != nil {
@@ -34,8 +33,9 @@ func (client *Client) CreateDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyO
 	return nil
 }
 
-func (client *Client) ReadDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyOption) (*models.DHCPOptionPolicyOption, error) {
-	optionPolicyID, err := client.GetDHCPOptionPolicyID(obj.Name)
+func (client *Client) ReadDHCPOptionPolicyOption(id string) (*models.DHCPOptionPolicyOption, error) {
+	idSplit := strings.Split(id, "/")
+	optionPolicyID, err := client.GetDHCPOptionPolicyID(idSplit[0])
 	if err != nil {
 		return nil, err
 	}
@@ -47,22 +47,27 @@ func (client *Client) ReadDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyOpt
 	if err != nil {
 		return nil, err
 	}
-
 	flag := false
+	dhcpOption := models.DHCPOptionPolicyOption{}
 	for _, option := range DHCPOptionPolicy.DHCPOption {
-		if option.Name == obj.Name && option.ID == obj.ID {
+		if option.Name == idSplit[1] {
 			flag = true
+			dhcpOption.Name = option.Name
+			dhcpOption.ID = option.ID
+			dhcpOption.Data = option.Data
+			dhcpOption.PolicyName = DHCPOptionPolicy.Name
 			break
 		}
 	}
 	if flag {
-		return obj, nil
+		return &dhcpOption, nil
 	}
+
 	return nil, fmt.Errorf("No DHCP Option Policy found")
 }
 
-func (client *Client) UpdateDHCPOptionPolicyOption(new *models.DHCPOptionPolicyOption, old *models.DHCPOptionPolicyOption) error {
-	optionPolicyID, err := client.GetDHCPOptionPolicyID(old.Name)
+func (client *Client) UpdateDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyOption) error {
+	optionPolicyID, err := client.GetDHCPOptionPolicyID(obj.PolicyName)
 	if err != nil {
 		return err
 	}
@@ -74,22 +79,20 @@ func (client *Client) UpdateDHCPOptionPolicyOption(new *models.DHCPOptionPolicyO
 	if err != nil {
 		return err
 	}
-
 	NewOptions := make([]models.DHCPOption, 0, 1)
 	NewOption := models.DHCPOption{
-		Data: new.Data,
-		ID:   new.ID,
-		Name: new.Name,
+		Data: obj.Data,
+		ID:   obj.ID,
+		Name: obj.Name,
 	}
 
 	for _, option := range DHCPOptionPolicy.DHCPOption {
-		if option.Name != old.Name && option.ID != old.ID {
+		if option.Name != obj.Name {
 			NewOptions = append(NewOptions, option)
 		} else {
 			NewOptions = append(NewOptions, NewOption)
 		}
 	}
-
 	DHCPOptionPolicy.DHCPOption = NewOptions
 	_, err = client.UpdateDHCPOptionPolicy(optionPolicyID, DHCPOptionPolicy)
 	if err != nil {
@@ -98,8 +101,9 @@ func (client *Client) UpdateDHCPOptionPolicyOption(new *models.DHCPOptionPolicyO
 	return nil
 }
 
-func (client *Client) DeleteDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyOption) error {
-	optionPolicyID, err := client.GetDHCPOptionPolicyID(obj.Name)
+func (client *Client) DeleteDHCPOptionPolicyOption(id string) error {
+	idSplit := strings.Split(id, "/")
+	optionPolicyID, err := client.GetDHCPOptionPolicyID(idSplit[0])
 	if err != nil {
 		return err
 	}
@@ -113,7 +117,7 @@ func (client *Client) DeleteDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyO
 	}
 	NewOptions := make([]models.DHCPOption, 0, 1)
 	for _, option := range DHCPOptionPolicy.DHCPOption {
-		if option.Name != obj.Name && option.ID != obj.ID {
+		if option.Name != idSplit[1] {
 			NewOptions = append(NewOptions, option)
 		}
 	}
@@ -122,5 +126,6 @@ func (client *Client) DeleteDHCPOptionPolicyOption(obj *models.DHCPOptionPolicyO
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
