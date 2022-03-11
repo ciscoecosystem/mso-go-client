@@ -1,5 +1,11 @@
 package models
 
+type TemplateBD struct {
+	Ops   string                 `json:",omitempty"`
+	Path  string                 `json:",omitempty"`
+	Value map[string]interface{} `json:",omitempty"`
+}
+
 func NewTemplateBD(ops, path, name, displayName, layer2Unicast, unkMcastAct, multiDstPktAct, v6unkMcastAct, vmac string, intersiteBumTrafficAllow, optimizeWanBandwidth, l2Stretch, l3MCast, arpFlood, unicastRouting bool, vrfRef, dhcpLabel map[string]interface{}, dhcpLabels []interface{}) *PatchPayload {
 	var bdMap map[string]interface{}
 	bdMap = map[string]interface{}{
@@ -33,11 +39,15 @@ func NewTemplateBD(ops, path, name, displayName, layer2Unicast, unkMcastAct, mul
 	}
 
 	if bdMap["multiDstPktAct"] == "flood_in_bd" || bdMap["multiDstPktAct"] == "" {
-		bdMap["multiDstPktAct"] = "bd-flood"
+		bdMap["multiDstPktAct"] = "flood_in_bd"
 	}
 
 	if bdMap["multiDstPktAct"] == "flood_in_encap" {
-		bdMap["multiDstPktAct"] = "encap-flood"
+		bdMap["multiDstPktAct"] = "flood_in_encap"
+	}
+
+	if bdMap["multiDstPktAct"] == "drop" {
+		bdMap["multiDstPktAct"] = "drop"
 	}
 
 	if bdMap["v6unkMcastAct"] == "optimized_flooding" {
