@@ -34,15 +34,12 @@ func NewSchema(id, displayName, templateName, tenantId string, template []interf
 			templateMap,
 		}
 	} else {
-		templateMap := make(map[string]interface{})
 		for _, map_values := range template {
-			map_template := make(map[string]interface{})
 			map_template_values := map_values.(map[string]interface{})
-			map_template["name"] = map_template_values["name"]
-			map_template["displayName"] = map_template_values["displayName"]
-			map_template["tenantId"] = map_template_values["tenantId"]
-
-			templateMap = map[string]interface{}{
+			templateMap := map[string]interface{}{
+				"name":          map_template_values["name"],
+				"tenantId":      map_template_values["tenantId"],
+				"displayName":   map_template_values["displayName"],
 				"anps":          []interface{}{},
 				"contracts":     []interface{}{},
 				"vrfs":          []interface{}{},
@@ -51,7 +48,7 @@ func NewSchema(id, displayName, templateName, tenantId string, template []interf
 				"externalEpgs":  []interface{}{},
 				"serviceGraphs": []interface{}{},
 			}
-			result = append(result, mergeMaps(map_template, templateMap))
+			result = append(result, templateMap)
 		}
 	}
 	if id == "" {
@@ -68,16 +65,6 @@ func NewSchema(id, displayName, templateName, tenantId string, template []interf
 			Value: result,
 		}
 	}
-}
-
-func mergeMaps(maps ...map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
-	for _, individualMap := range maps {
-		for k, v := range individualMap {
-			result[k] = v
-		}
-	}
-	return result
 }
 
 func (schema *Schema) ToMap() (map[string]interface{}, error) {
