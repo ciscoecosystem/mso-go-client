@@ -4,13 +4,13 @@ type Model interface {
 	ToMap() (map[string]interface{}, error)
 }
 
-type patchPayload struct {
+type PatchPayload struct {
 	Ops   string                 `json:",omitempty"`
 	Path  string                 `json:",omitempty"`
 	Value map[string]interface{} `json:",omitempty"`
 }
 
-func (patchPayloadAttributes *patchPayload) ToMap() (map[string]interface{}, error) {
+func (patchPayloadAttributes *PatchPayload) ToMap() (map[string]interface{}, error) {
 	patchPayloadAttributesMap := make(map[string]interface{})
 	A(patchPayloadAttributesMap, "op", patchPayloadAttributes.Ops)
 	A(patchPayloadAttributesMap, "path", patchPayloadAttributes.Path)
@@ -18,4 +18,11 @@ func (patchPayloadAttributes *patchPayload) ToMap() (map[string]interface{}, err
 		A(patchPayloadAttributesMap, "value", patchPayloadAttributes.Value)
 	}
 	return patchPayloadAttributesMap, nil
+}
+
+func GetRemovePatchPayload(path string) *PatchPayload {
+	return &PatchPayload{
+		Ops:  "remove",
+		Path: path,
+	}
 }

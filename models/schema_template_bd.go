@@ -1,6 +1,6 @@
 package models
 
-func NewTemplateBD(ops, path, name, displayName, layer2Unicast, unkMcastAct, multiDstPktAct, v6unkMcastAct, vmac string, intersiteBumTrafficAllow, optimizeWanBandwidth, l2Stretch, l3MCast, arpFlood, unicastRouting bool, vrfRef, dhcpLabel map[string]interface{}, dhcpLabels []interface{}) *patchPayload {
+func NewTemplateBD(ops, path, name, displayName, layer2Unicast, unkMcastAct, multiDstPktAct, v6unkMcastAct, vmac string, intersiteBumTrafficAllow, optimizeWanBandwidth, l2Stretch, l3MCast, arpFlood, unicastRouting bool, vrfRef, dhcpLabel map[string]interface{}, dhcpLabels []interface{}) *PatchPayload {
 	var bdMap map[string]interface{}
 	bdMap = map[string]interface{}{
 		"name":                     name,
@@ -54,16 +54,9 @@ func NewTemplateBD(ops, path, name, displayName, layer2Unicast, unkMcastAct, mul
 		delete(bdMap, "dhcpLabel")
 	}
 
-	return &patchPayload{
+	return &PatchPayload{
 		Ops:   ops,
 		Path:  path,
 		Value: bdMap,
-	}
-}
-
-func RemoveTemplateBD(path string) *patchPayload {
-	return &patchPayload{
-		Ops:  "remove",
-		Path: path,
 	}
 }
