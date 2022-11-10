@@ -7,8 +7,6 @@ import (
 	"github.com/ciscoecosystem/mso-go-client/models"
 )
 
-var regionHubNetworkMutex sync.Mutex
-
 func (client *Client) CreateInterSchemaSiteVrfRegionHubNetwork(obj *models.InterSchemaSiteVrfRegionHubNetork) error {
 	schemaCont, err := client.GetViaURL(fmt.Sprintf("api/v1/schemas/%s", obj.SchemaID))
 	if err != nil {
@@ -18,12 +16,10 @@ func (client *Client) CreateInterSchemaSiteVrfRegionHubNetwork(obj *models.Inter
 	if err != nil {
 		return err
 	}
-	regionHubNetworkMutex.Lock()
 	_, err = client.PatchbyID(fmt.Sprintf("api/v1/schemas/%s", obj.SchemaID), hubNetwork)
 	if err != nil {
 		return err
 	}
-	regionHubNetworkMutex.Unlock()
 	return nil
 }
 
@@ -36,12 +32,10 @@ func (client *Client) DeleteInterSchemaSiteVrfRegionHubNetwork(obj *models.Inter
 	if err != nil {
 		return err
 	}
-	regionHubNetworkMutex.Lock()
 	_, err = client.PatchbyID(fmt.Sprintf("api/v1/schemas/%s", obj.SchemaID), hubNetwork)
 	if err != nil {
 		return err
 	}
-	regionHubNetworkMutex.Unlock()
 	return nil
 }
 

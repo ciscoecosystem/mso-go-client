@@ -7,16 +7,12 @@ import (
 	"github.com/ciscoecosystem/mso-go-client/models"
 )
 
-var usegMutex sync.Mutex
-
 func (client *Client) CreateAnpEpgUsegAttr(obj *models.SiteUsegAttr) error {
 	useg := models.SiteAnpEpgUsegAttrForCreation(obj)
-	usegMutex.Lock()
 	_, err := client.PatchbyID(fmt.Sprintf("api/v1/schemas/%s", obj.SchemaID), useg)
 	if err != nil {
 		return err
 	}
-	usegMutex.Unlock()
 	return nil
 }
 
@@ -26,12 +22,10 @@ func (client *Client) DeleteAnpEpgUsegAttr(obj *models.SiteUsegAttr) error {
 		return read_err
 	}
 	useg := models.SiteAnpEpgUsegAttrforDeletion(obj, useg_index)
-	usegMutex.Lock()
 	_, err := client.PatchbyID(fmt.Sprintf("api/v1/schemas/%s", obj.SchemaID), useg)
 	if err != nil {
 		return err
 	}
-	usegMutex.Unlock()
 	return nil
 }
 
@@ -41,12 +35,10 @@ func (client *Client) UpdateAnpEpgUsegAttr(obj *models.SiteUsegAttr) error {
 		return read_err
 	}
 	useg := models.SiteAnpEpgUsegAttrforUpdate(obj, useg_index)
-	usegMutex.Lock()
 	_, err := client.PatchbyID(fmt.Sprintf("api/v1/schemas/%s", obj.SchemaID), useg)
 	if err != nil {
 		return err
 	}
-	usegMutex.Unlock()
 	return nil
 }
 
