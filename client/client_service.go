@@ -45,7 +45,9 @@ func (c *Client) Put(endpoint string, obj models.Model) (*container.Container, e
 		return nil, err
 	}
 
+	c.Mutex.Lock()
 	cont, _, err := c.Do(req)
+	c.Mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +67,9 @@ func (c *Client) Save(endpoint string, obj models.Model) (*container.Container, 
 		return nil, err
 	}
 
+	c.Mutex.Lock()
 	cont, _, err := c.Do(req)
+	c.Mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +97,9 @@ func (c *Client) DeletebyId(url string) error {
 		return err
 	}
 
+	c.Mutex.Lock()
 	_, resp, err1 := c.Do(req)
+	c.Mutex.Unlock()
 	if err1 != nil {
 		return err1
 	}
@@ -132,7 +138,9 @@ func (c *Client) PatchbyID(endpoint string, objList ...models.Model) (*container
 		return nil, err
 	}
 
+	c.Mutex.Lock()
 	cont, _, err := c.Do(req)
+	c.Mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}

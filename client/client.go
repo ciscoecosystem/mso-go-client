@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/ciscoecosystem/mso-go-client/container"
 	"github.com/ciscoecosystem/mso-go-client/models"
@@ -31,6 +32,7 @@ type Client struct {
 	BaseURL            *url.URL
 	httpClient         *http.Client
 	AuthToken          *Auth
+	Mutex              sync.Mutex
 	username           string
 	password           string
 	insecure           bool
