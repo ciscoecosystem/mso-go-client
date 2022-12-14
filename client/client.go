@@ -15,6 +15,7 @@ import (
 
 	"github.com/ciscoecosystem/mso-go-client/container"
 	"github.com/ciscoecosystem/mso-go-client/models"
+	"github.com/hashicorp/go-version"
 )
 
 const msoAuthPayload = `{
@@ -39,6 +40,7 @@ type Client struct {
 	proxyUrl           string
 	domain             string
 	platform           string
+	version            string
 	skipLoggingPayload bool
 }
 
@@ -74,6 +76,12 @@ func Domain(domain string) Option {
 func Platform(platform string) Option {
 	return func(client *Client) {
 		client.platform = platform
+	}
+}
+
+func Version(version string) Option {
+	return func(client *Client) {
+		client.version = version
 	}
 }
 
@@ -287,6 +295,52 @@ func (c *Client) GetDomainId(domain string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("Unable to find domain id for domain %s", domain)
+}
+
+func (c *Client) GetVersion() (string, error) {
+	req, err := c.MakeRestRequest("GET", "/api/v1/platform/version", nil, true)
+	if err != nil {
+		return "unknown", err
+	}
+
+	obj, _, err := c.Do(req)
+	if err != nil {
+		return "unknown", err
+	}
+
+	err = CheckForErrors(obj, "GET")
+	if err != nil {
+		return "unknown", err
+	}
+
+	version := stripQuotes(obj.Search("version").String())
+	if version == "" {
+		return "unknown", fmt.Errorf("Unable to identify version")
+	}
+	c.version = version
+	return version, nil
+}
+
+// Compares the version to the retrieved version.
+// This returns -1, 0, or 1 if this version is smaller, equal, or larger than the retrieved version, respectively.
+func (c *Client) CompareVersion(v string) (int, error) {
+	if c.version == "" {
+		c.GetVersion()
+	}
+	if c.version == "unknown" {
+		return 0, fmt.Errorf("Could not retrieve version")
+	}
+
+	v1, err := version.NewVersion(c.version)
+	if err != nil {
+		return 0, fmt.Errorf("Could not parse retrieved version")
+	}
+	v2, err := version.NewVersion(v)
+	if err != nil {
+		return 0, fmt.Errorf("Could not parse version")
+	}
+
+	return v2.Compare(v1), nil
 }
 
 func StrtoInt(s string, startIndex int, bitSize int) (int64, error) {
