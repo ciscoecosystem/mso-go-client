@@ -67,9 +67,7 @@ func (c *Client) Save(endpoint string, obj models.Model) (*container.Container, 
 		return nil, err
 	}
 
-	c.Mutex.Lock()
 	cont, _, err := c.Do(req)
-	c.Mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}
