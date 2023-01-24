@@ -95,9 +95,7 @@ func (c *Client) DeletebyId(url string) error {
 		return err
 	}
 
-	c.Mutex.Lock()
 	_, resp, err1 := c.Do(req)
-	c.Mutex.Unlock()
 	if err1 != nil {
 		return err1
 	}
