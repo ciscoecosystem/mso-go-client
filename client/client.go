@@ -3,9 +3,10 @@ package client
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -38,10 +39,12 @@ type Client struct {
 	password           string
 	insecure           bool
 	proxyUrl           string
+	proxyCreds         string
 	domain             string
 	platform           string
 	version            string
 	skipLoggingPayload bool
+	preserveBaseUrlRef bool
 }
 
 // singleton implementation of a client
@@ -64,6 +67,12 @@ func Password(password string) Option {
 func ProxyUrl(pUrl string) Option {
 	return func(client *Client) {
 		client.proxyUrl = pUrl
+	}
+}
+
+func ProxyCreds(pcreds string) Option {
+	return func(client *Client) {
+		client.proxyCreds = pcreds
 	}
 }
 
@@ -129,11 +138,18 @@ func GetClient(clientUrl, username string, options ...Option) *Client {
 }
 
 func (c *Client) configProxy(transport *http.Transport) *http.Transport {
+	log.Printf("[DEBUG]: Using Proxy Server: %s ", c.proxyUrl)
 	pUrl, err := url.Parse(c.proxyUrl)
 	if err != nil {
 		log.Fatal(err)
 	}
 	transport.Proxy = http.ProxyURL(pUrl)
+
+	if c.proxyCreds != "" {
+		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(c.proxyCreds))
+		transport.ProxyConnectHeader = http.Header{}
+		transport.ProxyConnectHeader.Add("Proxy-Authorization", basicAuth)
+	}
 	return transport
 }
 
@@ -360,9 +376,15 @@ func (c *Client) Do(req *http.Request) (*container.Container, *http.Response, er
 	log.Printf("[DEBUG] HTTP Request: %s %s", req.Method, req.URL.String())
 	log.Printf("[DEBUG] HTTP Response: %d %s %v", resp.StatusCode, resp.Status, resp)
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, err
+	}
 	bodyStr := string(bodyBytes)
-	resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		return nil, nil, err
+	}
 	log.Printf("[DEBUG] HTTP response unique string %s %s %s", req.Method, req.URL.String(), bodyStr)
 	if req.Method != "DELETE" && resp.StatusCode != 204 {
 		obj, err := container.ParseJSON(bodyBytes)
@@ -373,6 +395,8 @@ func (c *Client) Do(req *http.Request) (*container.Container, *http.Response, er
 		}
 		log.Printf("[DEBUG] Exit from do method")
 		return obj, resp, err
+	} else if req.Method == "DELETE" && resp.StatusCode == 204 {
+		return nil, resp, nil
 	} else if resp.StatusCode == 204 {
 		return nil, nil, nil
 	} else {
@@ -385,4 +409,62 @@ func stripQuotes(word string) string {
 		return strings.TrimSuffix(strings.TrimPrefix(word, "\""), "\"")
 	}
 	return word
+}
+
+// Takes raw payload and does the http request
+// - Used for login request
+// - Passwords with special chars have issues when using container
+// - For encoding/decoding
+func (c *Client) MakeRestRequestRaw(method string, rpath string, payload []byte, authenticated bool) (*http.Request, error) {
+
+	pathURL, err := url.Parse(rpath)
+	if err != nil {
+		return nil, err
+	}
+
+	fURL, err := url.Parse(c.BaseURL.String())
+	if err != nil {
+		return nil, err
+	}
+
+	if c.preserveBaseUrlRef {
+		// Default is false for preserveBaseUrlRef - matching original behavior to strip out BaseURL
+		fURLStr := fURL.String() + pathURL.String()
+		fURL, err = url.Parse(fURLStr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Original behavior to strip down BaseURL
+		fURL = fURL.ResolveReference(pathURL)
+	}
+
+	var req *http.Request
+	log.Printf("[DEBUG] BaseURL: %s, pathURL: %s, fURL: %s", c.BaseURL.String(), pathURL.String(), fURL.String())
+	if method == "GET" {
+		req, err = http.NewRequest(method, fURL.String(), nil)
+	} else {
+		req, err = http.NewRequest(method, fURL.String(), bytes.NewBuffer(payload))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if c.skipLoggingPayload {
+		log.Printf("HTTP request %s %s", method, rpath)
+	} else {
+		log.Printf("HTTP request %s %s %v", method, rpath, req)
+	}
+	if authenticated {
+		req, err = c.InjectAuthenticationHeader(req, rpath)
+		if err != nil {
+			return req, err
+		}
+	}
+
+	if !c.skipLoggingPayload {
+		log.Printf("HTTP request after injection %s %s %v", method, rpath, req)
+	}
+
+	return req, nil
 }
