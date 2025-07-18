@@ -461,8 +461,8 @@ func (c *Client) DoWithRetryFunc(req *http.Request, retryFunc CallbackRetryFunc)
 		// Attempt retry for the following error codes:
 		//  429 Too Many Requests
 		//  503 Service Unavailable
-		//  500 Internal error, that happens due to read timeout with parallel rads
-		if resp.StatusCode == 429 || resp.StatusCode == 503 || resp.StatusCode == 500 {
+		//  500 Internal error/timeout
+		if resp.StatusCode == 429 || resp.StatusCode == 500 || resp.StatusCode == 503 {
 			retry = true
 		}
 
