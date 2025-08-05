@@ -459,6 +459,28 @@ func (c *Client) DoWithRetryFunc(req *http.Request, retryFunc CallbackRetryFunc)
 			}
 		}
 
+		// Handle session timeout for login based requests
+		if resp.StatusCode == 401 {
+			obj, err = container.ParseJSON(bodyBytes)
+			if err != nil {
+				log.Printf("[DEBUG] Authorization error with status code 401")
+			} else {
+				errorMessage := obj.S("error").String()
+				log.Printf("[DEBUG] Authorization error with status code 401: %+v", errorMessage)
+			}
+			log.Printf("[DEBUG] Retrying authentication after 401 error")
+			c.AuthToken = nil
+			req, err = c.InjectAuthenticationHeader(req, "")
+			if err == nil {
+				retry = true
+				// If re-authentication is succesful, not counting previous query as an attempt
+				attempts = attempts - 1
+				log.Printf("[DEBUG] Retrying same request after status 401 and re-authentication")
+			} else {
+				log.Printf("[ERROR] Error when retrying authentication after 401 error: %v", err)
+			}
+		}
+
 		// Attempt retry for the following error codes:
 		//  429 Too Many Requests
 		//  503 Service Unavailable
