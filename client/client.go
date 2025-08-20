@@ -537,6 +537,7 @@ func (c *Client) DoWithRetryFunc(req *http.Request, retryFunc CallbackRetryFunc)
 			obj, err = container.ParseJSON(bodyBytes)
 			if err != nil {
 				log.Printf("[ERROR] Error occurred while JSON parsing for error message (non-2xx status): %+v", err)
+				return nil, resp, err
 			}
 		}
 		log.Printf("[DEBUG] Exit from Do method")
