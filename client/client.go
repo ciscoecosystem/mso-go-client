@@ -206,6 +206,7 @@ func (c *Client) useInsecureHTTPClient(insecure bool) *http.Transport {
 }
 
 func (c *Client) MakeRestRequest(method string, path string, body *container.Container, authenticated bool) (*http.Request, error) {
+	origPath := path
 	if c.platform == "nd" && path != "/login" {
 		if strings.HasPrefix(path, "/") {
 			path = path[1:]
@@ -230,6 +231,10 @@ func (c *Client) MakeRestRequest(method string, path string, body *container.Con
 	}
 	if err != nil {
 		return nil, err
+	}
+	if method == "PATCH" || method == "PUT" || method == "DELETE" || method == "POST" {
+		c.updateCacheForWrite(origPath)
+		log.Printf("[DEBUG] updating cache for write methods, endpoint %v", origPath)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	log.Printf("[DEBUG] HTTP request %s %s", method, path)
