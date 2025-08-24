@@ -205,16 +205,17 @@ func (c *Client) useInsecureHTTPClient(insecure bool) *http.Transport {
 	return transport
 }
 
-func (c *Client) MakeRestRequest(method string, path string, body *container.Container, authenticated bool) (*http.Request, error) {
+func (c *Client) MakeFullUrl(method string, path string) (string, error) {
 	if c.platform == "nd" && path != "/login" {
-		if strings.HasPrefix(path, "/") {
-			path = path[1:]
-		}
-		path = fmt.Sprintf("mso/%v", path)
+		path = strings.TrimPrefix(path, "/")
+		path = fmt.Sprintf("/mso/%v", path)
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = fmt.Sprintf("/%v", path)
 	}
 	url, err := url.Parse(path)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if method == "PATCH" {
 		validateString := url.Query()
@@ -222,11 +223,19 @@ func (c *Client) MakeRestRequest(method string, path string, body *container.Con
 		url.RawQuery = validateString.Encode()
 	}
 	fURL := c.BaseURL.ResolveReference(url)
+	return fURL.String(), nil
+}
+
+func (c *Client) MakeRestRequest(method string, path string, body *container.Container, authenticated bool) (*http.Request, error) {
+	fullUrl, err := c.MakeFullUrl(method, path)
+	if err != nil {
+		return nil, err
+	}
 	var req *http.Request
 	if method == "GET" || method == "DELETE" {
-		req, err = http.NewRequest(method, fURL.String(), nil)
+		req, err = http.NewRequest(method, fullUrl, nil)
 	} else {
-		req, err = http.NewRequest(method, fURL.String(), bytes.NewBuffer((body.Bytes())))
+		req, err = http.NewRequest(method, fullUrl, bytes.NewBuffer((body.Bytes())))
 	}
 	if err != nil {
 		return nil, err
