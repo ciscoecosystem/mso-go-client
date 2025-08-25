@@ -9,6 +9,7 @@ var TestBaseUrls = [...]string{
 	"https://ndo.host.cisco",
 	"https://ndo.host.cisco/",
 	"https://ndo.host.cisco//",
+	"https://ndo.host.cisco///",
 }
 
 func AssertFullUrl(t *testing.T, baseUrl string, platform string, method string, path string, expected string) {
@@ -38,20 +39,16 @@ func TestMakeFullUrl_Login(t *testing.T) {
 func TestMakeFullUrl_Get(t *testing.T) {
 	expected := "https://ndo.host.cisco/templates/123"
 	expected_nd := "https://ndo.host.cisco/mso/templates/123"
-	path := "/templates/123"
-	for _, baseUrl := range TestBaseUrls {
-		AssertFullUrl(t, baseUrl, "nd", "GET", path, expected_nd)
-		AssertFullUrl(t, baseUrl, "mso", "GET", path, expected)
+	paths := [...]string {
+		"templates/123",
+		"/templates/123",
+		"///templates/123",
 	}
-}
-
-func TestMakeFullUrl_GetNoPrefix(t *testing.T) {
-	expected := "https://ndo.host.cisco/templates/123"
-	expected_nd := "https://ndo.host.cisco/mso/templates/123"
-	path := "templates/123"
 	for _, baseUrl := range TestBaseUrls {
-		AssertFullUrl(t, baseUrl, "nd", "GET", path, expected_nd)
-		AssertFullUrl(t, baseUrl, "mso", "GET", path, expected)
+		for _, path := range paths {
+			AssertFullUrl(t, baseUrl, "nd", "GET", path, expected_nd)
+			AssertFullUrl(t, baseUrl, "mso", "GET", path, expected)
+		}
 	}
 }
 

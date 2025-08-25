@@ -206,11 +206,10 @@ func (c *Client) useInsecureHTTPClient(insecure bool) *http.Transport {
 }
 
 func (c *Client) MakeFullUrl(method string, path string) (string, error) {
-	if c.platform == "nd" && path != "/login" {
-		path = strings.TrimPrefix(path, "/")
+	path = strings.TrimLeft(path, "/")
+	if c.platform == "nd" && path != "login" {
 		path = fmt.Sprintf("/mso/%v", path)
-	}
-	if !strings.HasPrefix(path, "/") {
+	} else {
 		path = fmt.Sprintf("/%v", path)
 	}
 	url, err := url.Parse(path)
