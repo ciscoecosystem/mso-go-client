@@ -57,6 +57,8 @@ type Client struct {
 	backoffMinDelay    int
 	backoffMaxDelay    int
 	backoffDelayFactor float64
+	Cache              *ThreadSafeCache
+	cacheEnabled       bool
 }
 
 type CallbackRetryFunc func(*container.Container) bool
@@ -138,6 +140,12 @@ func BackoffDelayFactor(backoffDelayFactor float64) Option {
 	}
 }
 
+func CacheEnabled(enabled bool) Option {
+	return func(client *Client) {
+		client.cacheEnabled = enabled
+	}
+}
+
 func initClient(clientUrl, username string, options ...Option) *Client {
 	var transport *http.Transport
 	bUrl, err := url.Parse(clientUrl)
@@ -150,6 +158,7 @@ func initClient(clientUrl, username string, options ...Option) *Client {
 		username:         username,
 		httpClient:       http.DefaultClient,
 		maxReAuthRetries: 3,
+		Cache:            NewThreadSafeCache(),
 	}
 
 	for _, option := range options {
@@ -377,6 +386,119 @@ func (c *Client) GetVersion() (string, error) {
 	return version, nil
 }
 
+// deepCloneContainer creates a true deep copy of a Container to prevent shared data races
+func (c *Client) deepCloneContainer(original *container.Container) (*container.Container, error) {
+	if original == nil {
+		return nil, nil
+	}
+
+	// Use gabs-compatible deep cloning via JSON bytes but with proper container creation
+	jsonBytes, err := json.Marshal(original.Data())
+	if err != nil {
+		log.Printf("[WARN] Failed to marshal container for cloning: %v", err)
+		return original, nil // Return original as fallback
+	}
+
+	cloned, err := container.ParseJSON(jsonBytes)
+	if err != nil {
+		log.Printf("[WARN] Failed to parse JSON for cloning: %v", err)
+		return original, nil // Return original as fallback
+	}
+
+	return cloned, nil
+}
+
+// GetSchemaWithCache retrieves schema with caching support
+func (c *Client) GetSchemaWithCache(schemaId string) (*container.Container, error) {
+	// Skip cache if disabled - fall back to direct API call
+	if !c.cacheEnabled {
+		log.Printf("[DEBUG] SCHEMA_CACHE_DISABLED for %s, fetching from API", schemaId)
+		return c.GetViaURL(fmt.Sprintf("api/v1/schemas/%s", schemaId))
+	}
+
+	cacheKey := fmt.Sprintf("schema_%s", schemaId)
+
+	// Check cache first - use atomic get+clone
+	cloneFunc := func(item interface{}) (interface{}, error) {
+		return c.deepCloneContainer(item.(*container.Container))
+	}
+
+	if cached, found, cloneErr := c.Cache.Get(cacheKey, cloneFunc); found {
+		hits, misses, invalidations, hitRatio := c.Cache.GetStats()
+		log.Printf("[DEBUG] SCHEMA_CACHE_HIT for %s | Stats: Hits=%d, Misses=%d, Invalidations=%d, HitRatio=%.1f%%",
+			schemaId, hits, misses, invalidations, hitRatio)
+
+		if cloneErr != nil {
+			log.Printf("[WARN] Failed to clone cached container for %s, fetching fresh: %v", schemaId, cloneErr)
+			return c.GetViaURL(fmt.Sprintf("api/v1/schemas/%s", schemaId))
+		}
+		return cached.(*container.Container), nil
+	}
+
+	hits, misses, invalidations, hitRatio := c.Cache.GetStats()
+	log.Printf("[DEBUG] SCHEMA_CACHE_MISS for %s, fetching from API | Stats: Hits=%d, Misses=%d, Invalidations=%d, HitRatio=%.1f%%",
+		schemaId, hits, misses, invalidations, hitRatio)
+
+	// Cache miss - fetch from API
+	cont, err := c.GetViaURL(fmt.Sprintf("api/v1/schemas/%s", schemaId))
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache
+	c.Cache.Set(cacheKey, cont)
+	log.Printf("[DEBUG] SCHEMA_CACHED for %s | Size: %d items in cache", schemaId, len(c.Cache.items))
+
+	// CRITICAL: Return deep clone even for fresh data to maintain consistency
+	cloned, err := c.deepCloneContainer(cont)
+	if err != nil {
+		log.Printf("[WARN] Failed to clone fresh container for %s, returning original: %v", schemaId, err)
+		return cont, nil // Return original as fallback
+	}
+	return cloned, nil
+}
+
+// InvalidateSchemaCache removes a schema from cache
+func (c *Client) InvalidateSchemaCache(schemaId string) {
+	// Skip cache operations if caching is disabled
+	if !c.cacheEnabled {
+		log.Printf("[DEBUG] SCHEMA_CACHE_DISABLED, skipping invalidation for %s", schemaId)
+		return
+	}
+
+	cacheKey := fmt.Sprintf("schema_%s", schemaId)
+	c.Cache.Delete(cacheKey)
+	hits, misses, invalidations, hitRatio := c.Cache.GetStats()
+	log.Printf("[DEBUG] SCHEMA_CACHE_INVALIDATED for %s | Stats: Hits=%d, Misses=%d, Invalidations=%d, HitRatio=%.1f%%",
+		schemaId, hits, misses, invalidations, hitRatio)
+}
+
+// InvalidateAllSchemaCache removes all schema caches (for safety)
+func (c *Client) InvalidateAllSchemaCache() {
+	// Skip cache operations if caching is disabled
+	if !c.cacheEnabled {
+		log.Printf("[DEBUG] SCHEMA_CACHE_DISABLED, skipping all cache invalidation")
+		return
+	}
+
+	c.Cache.DeletePattern("schema_")
+	hits, misses, invalidations, hitRatio := c.Cache.GetStats()
+	log.Printf("[DEBUG] SCHEMA_CACHE_ALL_INVALIDATED | Stats: Hits=%d, Misses=%d, Invalidations=%d, HitRatio=%.1f%%",
+		hits, misses, invalidations, hitRatio)
+}
+
+// GetCacheStats returns current cache statistics
+func (c *Client) GetCacheStats() (hits, misses, invalidations int64, hitRatio float64) {
+	return c.Cache.GetStats()
+}
+
+// LogCacheStats logs current cache statistics
+func (c *Client) LogCacheStats() {
+	hits, misses, invalidations, hitRatio := c.Cache.GetStats()
+	log.Printf("[DEBUG] SCHEMA_CACHE_STATS | Hits=%d, Misses=%d, Invalidations=%d, HitRatio=%.1f%%, Size=%d",
+		hits, misses, invalidations, hitRatio, len(c.Cache.items))
+}
+
 // Compares the version to the retrieved version.
 // This returns -1, 0, or 1 if this version is smaller, equal, or larger than the retrieved version, respectively.
 func (c *Client) CompareVersion(v string) (int, error) {
@@ -593,4 +715,86 @@ func stripQuotes(word string) string {
 		return strings.TrimSuffix(strings.TrimPrefix(word, "\""), "\"")
 	}
 	return word
+}
+
+type ThreadSafeCache struct {
+	mu            sync.RWMutex
+	items         map[string]interface{}
+	hits          int64
+	misses        int64
+	invalidations int64
+}
+
+// NewThreadSafeCache creates and returns a new initialized ThreadSafeCache.
+func NewThreadSafeCache() *ThreadSafeCache {
+	return &ThreadSafeCache{
+		items: make(map[string]interface{}),
+	}
+}
+
+// Set adds or updates an item in the cache.
+func (c *ThreadSafeCache) Set(key string, value interface{}) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items[key] = value
+}
+
+// Get atomically gets and clones an item to prevent race conditions
+func (c *ThreadSafeCache) Get(key string, cloneFunc func(interface{}) (interface{}, error)) (interface{}, bool, error) {
+	c.mu.RLock()
+	item, found := c.items[key]
+
+	var result interface{}
+	var cloneErr error
+
+	if found {
+		// Clone while holding read lock - prevents race conditions
+		result, cloneErr = cloneFunc(item)
+	}
+	c.mu.RUnlock()
+
+	// Update statistics
+	c.mu.Lock()
+	if found {
+		c.hits++
+	} else {
+		c.misses++
+	}
+	c.mu.Unlock()
+
+	return result, found, cloneErr
+}
+
+// Delete removes an item from the cache.
+func (c *ThreadSafeCache) Delete(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.items, key)
+	c.invalidations++
+}
+
+// DeletePattern removes all items from the cache matching the pattern.
+func (c *ThreadSafeCache) DeletePattern(pattern string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	deletedCount := 0
+	for key := range c.items {
+		if strings.Contains(key, pattern) {
+			delete(c.items, key)
+			deletedCount++
+		}
+	}
+}
+
+func (c *ThreadSafeCache) GetStats() (hits, misses, invalidations int64, hitRatio float64) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	hits = c.hits
+	misses = c.misses
+	invalidations = c.invalidations
+	total := hits + misses
+	if total > 0 {
+		hitRatio = float64(hits) / float64(total) * 100
+	}
+	return
 }

@@ -10,7 +10,7 @@ Use `go get` to retrieve the SDK to add it to your `GOPATH` workspace, or projec
 $go get github.com/ciscoecosystem/mso-go-client
 ```
 
-There are no additional dependancies needed to be installed.
+There are no additional dependencies needed to be installed.
 
 ## Overview ##
   
@@ -43,4 +43,43 @@ Example,
 ```golang
 	client.Save("api/v1/tenants", models.NewTenant(TenantAttributes))
     # TenantAttributes is struct present in models/tenant.go
+```
+
+## Caching Support ##
+
+The client supports optional caching for schema requests to improve performance in scenarios with frequent schema lookups.
+
+### Enabling Caching ###
+
+Caching is **disabled by default** for safety. Enable it using the `CacheEnabled` option:
+
+```golang
+import "github.com/ciscoecosystem/mso-go-client/client"
+
+// Enable caching
+msoClient := client.GetClient("URL", "Username",
+    client.Password("Password"),
+    client.Insecure(true),
+    client.CacheEnabled(true))
+```
+
+### Cache Operations ###
+
+Once caching is enabled, you can use the following methods:
+
+```golang
+// Fetch schema with caching support (automatically handles cache hits/misses)
+schema, err := msoClient.GetSchemaWithCache("schema-id")
+
+// Invalidate a specific schema from cache (e.g., after updates)
+msoClient.InvalidateSchemaCache("schema-id")
+
+// Clear all cached schemas (useful for bulk operations or cleanup)
+msoClient.InvalidateAllSchemaCache()
+
+// Get cache statistics for monitoring
+hits, misses, invalidations, hitRatio := msoClient.GetCacheStats()
+
+// Log current cache statistics
+msoClient.LogCacheStats()
 ```
