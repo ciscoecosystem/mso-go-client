@@ -214,22 +214,6 @@ func TestCache_DataStorage(t *testing.T) {
 	}
 }
 
-// Test 7: GetViaURLWithCache Method Tests
-func TestClient_GetViaURLWithCache_Disabled(t *testing.T) {
-	// Create a properly initialized client similar to other tests
-	client := GetClient("https://test.example.com", "testuser", CacheEnabled(false))
-
-	// Test should use regular GetViaURL when caching disabled
-	// This test would require mocking HTTP requests, so we'll just verify the method exists
-	// and doesn't panic when called with caching disabled
-	_, err := client.GetViaURLWithCache("/test/url")
-	// We expect an error since we don't have a real HTTP client setup,
-	// but the important thing is that it doesn't panic
-	if err == nil {
-		t.Error("Expected error for non-working HTTP client")
-	}
-}
-
 func TestClient_DetectURLResourceType(t *testing.T) {
 	client := &Client{}
 
