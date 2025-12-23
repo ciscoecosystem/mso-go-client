@@ -48,12 +48,6 @@ func TestCache_Delete(t *testing.T) {
 	if found {
 		t.Error("Item should not exist after deletion")
 	}
-
-	// Verify invalidation was recorded
-	_, _, invalidations, _ := cache.GetStats()
-	if invalidations != 1 {
-		t.Errorf("Expected 1 invalidation, got %d", invalidations)
-	}
 }
 
 // Test 2: Cache Clear Functionality Tests
@@ -90,10 +84,8 @@ func TestCache_Clear(t *testing.T) {
 		t.Error("All items should be deleted after clearing")
 	}
 
-	// Verify cache size is zero
-	if cache.Size() != 0 {
-		t.Errorf("Cache size should be 0 after clear, got %d", cache.Size())
-	}
+	// Cache is cleared - no way to directly verify size with current API,
+	// but the Get operations above confirm all items were removed
 }
 
 // Test 3: Cache Enable/Disable Option Tests
@@ -114,22 +106,18 @@ func TestCacheEnabled_Option(t *testing.T) {
 }
 
 // Test 4: Client Cache Integration Tests
-func TestClient_InvalidateSchemaCache_Disabled(t *testing.T) {
+func TestClient_InvalidateURLCache_Disabled(t *testing.T) {
 	client := &Client{
 		Cache:        NewCache(),
 		cacheEnabled: false,
 	}
 
 	// Should not panic when cache is disabled
-	client.InvalidateSchemaCache("test-schema")
+	client.InvalidateURLCache("/api/v1/schemas/test-schema")
 	client.ClearCache()
 
-	// Should return zero stats when cache is disabled - test through the cache directly
-	hits, misses, invalidations, hitRatio := client.Cache.GetStats()
-	if hits != 0 || misses != 0 || invalidations != 0 || hitRatio != 0 {
-		t.Errorf("Cache stats should be zero when disabled, got hits=%d, misses=%d, invalidations=%d, hitRatio=%.1f",
-			hits, misses, invalidations, hitRatio)
-	}
+	// Cache operations should work even when disabled (just won't affect anything)
+	// Test passes if no panics occur
 }
 
 func TestClient_CacheInvalidationMethods(t *testing.T) {
@@ -139,25 +127,25 @@ func TestClient_CacheInvalidationMethods(t *testing.T) {
 	}
 
 	// Manually add items to cache to test invalidation
-	client.Cache.Set("schema_123", "test_data_123")
-	client.Cache.Set("schema_456", "test_data_456")
-	client.Cache.Set("other_789", "test_data_789")
+	client.Cache.Set("/api/v1/schemas/123", "test_data_123")
+	client.Cache.Set("/api/v1/schemas/456", "test_data_456")
+	client.Cache.Set("/api/v1/templates/789", "test_data_789")
 
 	cloneFunc := func(item interface{}) (interface{}, error) {
 		return item, nil
 	}
 
 	// Verify items exist
-	_, found1, _ := client.Cache.Get("schema_123", cloneFunc)
-	_, found2, _ := client.Cache.Get("schema_456", cloneFunc)
+	_, found1, _ := client.Cache.Get("/api/v1/schemas/123", cloneFunc)
+	_, found2, _ := client.Cache.Get("/api/v1/schemas/456", cloneFunc)
 	if !found1 || !found2 {
 		t.Error("Schema items should exist before invalidation")
 	}
 
-	// Test individual invalidation
-	client.InvalidateSchemaCache("123")
-	_, found1, _ = client.Cache.Get("schema_123", cloneFunc)
-	_, found2, _ = client.Cache.Get("schema_456", cloneFunc)
+	// Test individual URL invalidation
+	client.InvalidateURLCache("/api/v1/schemas/123")
+	_, found1, _ = client.Cache.Get("/api/v1/schemas/123", cloneFunc)
+	_, found2, _ = client.Cache.Get("/api/v1/schemas/456", cloneFunc)
 
 	if found1 {
 		t.Error("Schema 123 should be invalidated")
@@ -168,8 +156,8 @@ func TestClient_CacheInvalidationMethods(t *testing.T) {
 
 	// Test bulk invalidation using ClearCache (clears all items)
 	client.ClearCache()
-	_, found2, _ = client.Cache.Get("schema_456", cloneFunc)
-	_, found3, _ := client.Cache.Get("other_789", cloneFunc)
+	_, found2, _ = client.Cache.Get("/api/v1/schemas/456", cloneFunc)
+	_, found3, _ := client.Cache.Get("/api/v1/templates/789", cloneFunc)
 
 	if found2 {
 		t.Error("Schema 456 should be invalidated by clear operation")
@@ -179,19 +167,12 @@ func TestClient_CacheInvalidationMethods(t *testing.T) {
 	}
 }
 
-// Test 5: Cache Statistics Tests
-func TestCache_Statistics(t *testing.T) {
+// Test 5: Cache Hit/Miss Behavior Tests
+func TestCache_HitMissBehavior(t *testing.T) {
 	cache := NewCache()
 
 	cloneFunc := func(item interface{}) (interface{}, error) {
 		return item, nil
-	}
-
-	// Initial stats should be zero
-	hits, misses, invalidations, hitRatio := cache.GetStats()
-	if hits != 0 || misses != 0 || invalidations != 0 || hitRatio != 0 {
-		t.Errorf("Initial stats should be zero, got hits=%d, misses=%d, invalidations=%d, hitRatio=%.1f",
-			hits, misses, invalidations, hitRatio)
 	}
 
 	// Add item and test cache hit
@@ -207,37 +188,69 @@ func TestCache_Statistics(t *testing.T) {
 		t.Error("Should not find nonexistent item")
 	}
 
-	// Check updated stats
-	hits, misses, invalidations, hitRatio = cache.GetStats()
-	if hits != 1 || misses != 1 {
-		t.Errorf("Expected 1 hit and 1 miss, got hits=%d, misses=%d", hits, misses)
+	// Cache behavior is correct - hits return items, misses return false
+}
+
+// Test 6: Cache Data Storage Tests
+func TestCache_DataStorage(t *testing.T) {
+	cache := NewCache()
+
+	cloneFunc := func(item interface{}) (interface{}, error) {
+		return item, nil
 	}
-	if hitRatio != 50.0 {
-		t.Errorf("Expected hit ratio of 50.0%%, got %.1f%%", hitRatio)
+
+	// Test storing byte data (typical use case for JSON caching)
+	testData := []byte(`{"test": "data for memory calculation"}`)
+	cache.Set("key1", testData)
+
+	result, found, err := cache.Get("key1", cloneFunc)
+	if !found || err != nil {
+		t.Error("Should retrieve cached byte data")
+	}
+
+	retrievedData := result.([]byte)
+	if string(retrievedData) != string(testData) {
+		t.Errorf("Retrieved data doesn't match original. Expected %s, got %s", string(testData), string(retrievedData))
 	}
 }
 
-// Test 6: Cache Memory Statistics Tests
-func TestCache_MemoryStatistics(t *testing.T) {
-	cache := NewCache()
+// Test 7: GetViaURLWithCache Method Tests
+func TestClient_GetViaURLWithCache_Disabled(t *testing.T) {
+	// Create a properly initialized client similar to other tests
+	client := GetClient("https://test.example.com", "testuser", CacheEnabled(false))
 
-	// Test with empty cache
-	totalBytes, totalMB, avgBytesPerItem, _ := cache.GetMemoryStats()
-	if totalBytes != 0 || totalMB != 0 || avgBytesPerItem != 0 {
-		t.Errorf("Empty cache should have zero memory stats, got totalBytes=%d, totalMB=%.2f, avgBytesPerItem=%.2f",
-			totalBytes, totalMB, avgBytesPerItem)
+	// Test should use regular GetViaURL when caching disabled
+	// This test would require mocking HTTP requests, so we'll just verify the method exists
+	// and doesn't panic when called with caching disabled
+	_, err := client.GetViaURLWithCache("/test/url")
+	// We expect an error since we don't have a real HTTP client setup,
+	// but the important thing is that it doesn't panic
+	if err == nil {
+		t.Error("Expected error for non-working HTTP client")
+	}
+}
+
+func TestClient_DetectURLResourceType(t *testing.T) {
+	client := &Client{}
+
+	testCases := []struct {
+		url          string
+		expectedType string
+	}{
+		{"/api/v1/schemas/123", "SCHEMA"},
+		{"/api/v1/templates/456", "TEMPLATE"},
+		{"/api/v1/sites/789", "SITE"},
+		{"/api/v1/users/abc", "USER"},
+		{"/api/v1/tenants/def", "TENANT"},
+		{"/api/v1/labels/ghi", "LABEL"},
+		{"/api/v1/remote-locations/jkl", "REMOTE_LOCATION"},
+		{"/api/v1/unknown/mno", "RESOURCE"},
 	}
 
-	// Add some data
-	testData := []byte("test data for memory calculation")
-	cache.Set("key1", testData)
-
-	totalBytes, totalMB, avgBytesPerItem, _ = cache.GetMemoryStats()
-	expectedBytes := int64(len(testData))
-	if totalBytes != expectedBytes {
-		t.Errorf("Expected totalBytes=%d, got %d", expectedBytes, totalBytes)
-	}
-	if avgBytesPerItem != float64(expectedBytes) {
-		t.Errorf("Expected avgBytesPerItem=%.2f, got %.2f", float64(expectedBytes), avgBytesPerItem)
+	for _, tc := range testCases {
+		result := client.detectURLResourceType(tc.url)
+		if result != tc.expectedType {
+			t.Errorf("detectURLResourceType(%s) = %s, expected %s", tc.url, result, tc.expectedType)
+		}
 	}
 }
