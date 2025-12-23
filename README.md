@@ -47,7 +47,7 @@ Example,
 
 ## Caching Support ##
 
-The client supports optional caching for schema requests to improve performance in scenarios with frequent schema lookups.
+The client supports optional caching for API requests to improve performance by storing frequently accessed data in memory.
 
 ### Enabling Caching ###
 
@@ -68,18 +68,27 @@ msoClient := client.GetClient("URL", "Username",
 Once caching is enabled, you can use the following methods:
 
 ```golang
-// Fetch schema with caching support (automatically handles cache hits/misses)
-schema, err := msoClient.GetSchemaWithCache("schema-id")
+// Fetch data with caching support (automatically handles cache hits/misses)
+data, err := msoClient.GetViaURLWithCache("/api/v1/schemas/schema-id")
 
-// Invalidate a specific schema from cache (e.g., after updates)
-msoClient.InvalidateSchemaCache("schema-id")
+// Invalidate a specific URL from cache (e.g., after updates)
+msoClient.InvalidateURLCache("/api/v1/schemas/schema-id")
 
-// Clear all cached schemas (useful for bulk operations or cleanup)
-msoClient.InvalidateAllSchemaCache()
+// Clear all cached items (useful for bulk operations or cleanup)
+msoClient.ClearCache()
+```
 
-// Get cache statistics for monitoring
-hits, misses, invalidations, hitRatio := msoClient.GetCacheStats()
+### Cache Debug Information ###
 
-// Log current cache statistics
-msoClient.LogCacheStats()
+When debug logging is enabled (`TF_LOG=DEBUG` or `TF_LOG=TRACE`), the cache provides detailed information about:
+
+- Cache hits and misses per resource
+- Memory usage per cached item and total cache size
+- System memory usage
+- Hit ratios and performance statistics
+
+Example debug output:
+```
+[DEBUG] SCHEMA_CACHE_HIT for /api/v1/schemas/123 | ItemSize: 15.2KB | System: 45.3MB
+[DEBUG] CACHE_CLEARED | AggregateStats: Items=25, Hits=150, Misses=12, HitRatio=92.6% | Memory: Cache=1.25MB, AvgItem=51.2KB, System: 45.3MB
 ```
