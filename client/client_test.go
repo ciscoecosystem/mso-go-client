@@ -39,7 +39,7 @@ func TestMakeFullUrl_Login(t *testing.T) {
 func TestMakeFullUrl_Get(t *testing.T) {
 	expected := "https://ndo.host.cisco/templates/123"
 	expected_nd := "https://ndo.host.cisco/mso/templates/123"
-	paths := [...]string {
+	paths := [...]string{
 		"templates/123",
 		"/templates/123",
 		"///templates/123",
@@ -71,3 +71,4 @@ func TestMakeFullUrl_PatchExtraQuery(t *testing.T) {
 		AssertFullUrl(t, baseUrl, "mso", "PATCH", path, expected)
 	}
 }
+

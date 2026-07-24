@@ -10,7 +10,7 @@ Use `go get` to retrieve the SDK to add it to your `GOPATH` workspace, or projec
 $go get github.com/ciscoecosystem/mso-go-client
 ```
 
-There are no additional dependancies needed to be installed.
+There are no additional dependencies needed to be installed.
 
 ## Overview ##
   
@@ -43,4 +43,52 @@ Example,
 ```golang
 	client.Save("api/v1/tenants", models.NewTenant(TenantAttributes))
     # TenantAttributes is struct present in models/tenant.go
+```
+
+## Caching Support ##
+
+The client supports optional caching for API requests to improve performance by storing frequently accessed data in memory.
+
+### Enabling Caching ###
+
+Caching is **disabled by default** for safety. Enable it using the `CacheEnabled` option:
+
+```golang
+import "github.com/ciscoecosystem/mso-go-client/client"
+
+// Enable caching
+msoClient := client.GetClient("URL", "Username",
+    client.Password("Password"),
+    client.Insecure(true),
+    client.CacheEnabled(true))
+```
+
+### Cache Operations ###
+
+Once caching is enabled, you can use the following methods:
+
+```golang
+// Fetch data with caching support (automatically handles cache hits/misses)
+data, err := msoClient.GetViaURLWithCache("/api/v1/schemas/schema-id")
+
+// Invalidate a specific URL from cache (e.g., after updates)
+msoClient.InvalidateURLCache("/api/v1/schemas/schema-id")
+
+// Clear all cached items (useful for bulk operations or cleanup)
+msoClient.ClearCache()
+```
+
+### Cache Debug Information ###
+
+When debug logging is enabled (`TF_LOG=DEBUG` or `TF_LOG=TRACE`), the cache provides detailed information about:
+
+- Cache hits and misses per resource
+- Memory usage per cached item and total cache size
+- System memory usage
+- Hit ratios and performance statistics
+
+Example debug output:
+```
+[DEBUG] SCHEMA_CACHE_HIT for /api/v1/schemas/123 | ItemSize: 15.2KB | System: 45.3MB
+[DEBUG] CACHE_CLEARED | AggregateStats: Items=25, Hits=150, Misses=12, HitRatio=92.6% | Memory: Cache=1.25MB, AvgItem=51.2KB, System: 45.3MB
 ```
