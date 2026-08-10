@@ -57,6 +57,8 @@ type Client struct {
 	backoffMinDelay    int
 	backoffMaxDelay    int
 	backoffDelayFactor float64
+	Cache              *Cache
+	cacheEnabled       bool
 }
 
 type CallbackRetryFunc func(*container.Container) bool
@@ -138,6 +140,12 @@ func BackoffDelayFactor(backoffDelayFactor float64) Option {
 	}
 }
 
+func CacheEnabled(enabled bool) Option {
+	return func(client *Client) {
+		client.cacheEnabled = enabled
+	}
+}
+
 func initClient(clientUrl, username string, options ...Option) *Client {
 	var transport *http.Transport
 	bUrl, err := url.Parse(clientUrl)
@@ -150,6 +158,7 @@ func initClient(clientUrl, username string, options ...Option) *Client {
 		username:         username,
 		httpClient:       http.DefaultClient,
 		maxReAuthRetries: 3,
+		Cache:            NewCache(),
 	}
 
 	for _, option := range options {
@@ -385,6 +394,18 @@ func (c *Client) GetVersion() (string, error) {
 	}
 	c.version = version
 	return version, nil
+}
+
+// ClearCache removes all cached items (for cleanup and error recovery)
+func (c *Client) ClearCache() {
+	// Skip cache operations if caching is disabled
+	if !c.cacheEnabled {
+		log.Printf("[DEBUG] CACHE_DISABLED, skipping cache clear")
+		return
+	}
+
+	c.Cache.Clear()
+	c.Cache.LogOperation("CACHE_CLEARED")
 }
 
 // Compares the version to the retrieved version.
